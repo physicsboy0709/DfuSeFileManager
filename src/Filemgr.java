@@ -20,8 +20,10 @@ public class Filemgr {
 		final int adress;
 		final int lenght;
 		final int data[];
+		boolean hexlineverbose;
 		public Hexline(byte[] theline)
 		{
+			hexlineverbose=false;
 			int sum = 0, len = 0, cksum = 0, num = 0, code = 0;
 			int[] bytes;
 			long addr = 0;
@@ -47,14 +49,14 @@ public class Filemgr {
 			scanner.close();
 			loc += 2;
 			sum = (len & 255) + ((int)(addr >> 8) & 255) + (int)(addr & 255) + (code & 255);
-			if(verbose) System.out.printf("  \n DFU image content: %04x %04x ", addr, len);
+			if(verbose && hexlineverbose) System.out.printf("  \n DFU image content: %04x %04x ", addr, len);
 			bytes = new int[len];
 			while (num != len)
 			{
 				scanner = new Scanner(linnestr.substring(loc, loc + 2));
 				bytes[num] = scanner.nextShort(16);
 				scanner.close();
-				if(verbose) System.out.printf("%02x", bytes[num]);
+				if(verbose && hexlineverbose) System.out.printf("%02x", bytes[num]);
 				loc += 2;
 				sum += bytes[num] & 255;
 				num++;
@@ -80,19 +82,19 @@ public class Filemgr {
 	private final int targets=0x01;
 	private final byte alternate=0x00;
 	private final byte target_named=0x01;
-	private final String Target_name="Focus1";
+	private final String Target_name="ST Hornet Board DFU File ";
+	private final int[] crc32_table;
 	
 	private byte[] tprefix;
 	private byte[] prefix;
 	private byte[] suffix;
-	private int[] crc32_table;
 	private byte[] data;
 	private byte[] image;
 	private boolean verbose;
 	public Filemgr(boolean verbose){
 		this.verbose = verbose;
 		tprefix = new byte[274];
-		prefix = new byte[12];
+		prefix = new byte[11];
 		suffix = new byte[12];
 		data = new byte[65536];
 		image = new byte[65536];
@@ -161,12 +163,13 @@ public class Filemgr {
 		//szTargetName
 		pos=0;
 		chartmp = this.Target_name.getBytes();
-		i=8;
-		for(;i<8+chartmp.length;i++){
+		i=11;
+		for(;i<11+chartmp.length;i++){
 			tprefix[i] = (byte) chartmp[pos++];
 		}
 		for(;i<266;i++){
-			tprefix[i] = ' ';
+			//tprefix[i] = ' ';
+			tprefix[i] = 0;
 		}
 		//dwTargetSize
 		tprefix[266] = (byte) (size & 0xFF);
@@ -228,12 +231,11 @@ public class Filemgr {
 	}
 	int crc32_byte(int accum, byte delta)
 	{
-		return crc32_table[(accum ^ delta) & 0xff] ^ (accum >> 8);
+		return crc32_table[((byte)(accum ^ delta) & 0xff)] ^ (byte)(accum >> 8);
 	}
 	int load_file(String filename){
 		int[] memory = new int[65535];
 		int addr, n;
-		int[] bytes = new int[256];
 		int i, j, total = 0;
 		int minaddr = 65536, maxaddr = 0;
 
@@ -258,8 +260,8 @@ public class Filemgr {
 					case 0:
 						for (i = 0; i <= (n - 1); i++)
 						{
-							memory[addr] = bytes[i] & 255;
-							image[addr + 8] = (byte) (bytes[i] & 255);
+							memory[addr] = hexline.data[i] & 255;
+							image[addr + 8] = (byte) (hexline.data[i] & 255);
 							total++;
 							if (addr < minaddr)
 								minaddr = addr;
@@ -267,7 +269,7 @@ public class Filemgr {
 								maxaddr = addr;
 							addr++;
 						}
-						if(verbose) System.out.printf("saved\n");
+						if(verbose && hexline.hexlineverbose) System.out.printf("saved\n");
 						break;
 
 					case 1:
@@ -278,7 +280,9 @@ public class Filemgr {
 						image[5] = (byte) ((total >> 8) & 0xFF);
 						image[4] = (byte) (total & 0xFF);
 						if(verbose) System.out.printf("image size %02x %02x %02x %02x\n", total & 0xFF, (total >> 8) & 0xFF, (total >> 16) & 0xFF, (total >> 24) & 0xFF);
-
+						byte[] oldimg = image;
+						image = new byte[total + 8];
+						System.arraycopy(oldimg, 0, image, 0, total + 8);
 						return total;
 
 					case 4:
@@ -323,46 +327,45 @@ public class Filemgr {
 		create_tprefix(total);
 		create_dfuprefix(total);
 		create_dfusuffix();
-
+		int offset = 0;
 		if(verbose) System.out.printf("\nDFU prefix\n");
 		for (i = 0; i < 11; i++)
 		{
 			if(verbose) System.out.printf("%02x ", prefix[i]);
 			data[i] = prefix[i];
 		}
-
+		offset += i;
 		if(verbose) System.out.printf("\nDFU target prefix\n");
 		for (i = 0; i < 274; i++)
 		{
 			if(verbose) System.out.printf("%02x ", tprefix[i]);
-			data[i + 11] = tprefix[i];
+			data[i + offset] = tprefix[i];
 		}
-
+		offset += i;
 		if(verbose) System.out.printf("\nDFU core image of size %d\n", total);
 		for (i = 0; i < total + 8; i++)
 		{
 			if(verbose) System.out.printf("%02x ", image[i]);
-			data[i + 11 + 274] = image[i];
+			data[i + offset] = image[i];
 		}
-
+		offset += i;
 		if(verbose) System.out.printf("\nDFU suffix\n");
 		for (i = 0; i < 12; i++)
 		{
 			if(verbose) System.out.printf("%02x ", suffix[i]);
-			data[i + 11 + 274 + total + 8] = suffix[i];
+			data[i + offset] = suffix[i];
 		}
-
+		offset += i;
 		if(verbose) System.out.printf("\n dfu image \n");
 		for (i = 0; i < 321; i++)
 		{
 			if(verbose) System.out.printf("%02x ", data[i]);
 		}
-
 		if(verbose) System.out.printf("tutut %d\n", 11 + 274 + total + 8 + 12);
 		
 
 		/* compute crc */
-		for (i = 0; i < total + 11 + 12 + 8 + 274; i++)
+		for (i = 0; i < offset; i++)
 			crc32 = crc32_byte(crc32, data[i]);
 
 		crc_table[0] = (byte) (crc32 & 0xFF);
@@ -373,10 +376,15 @@ public class Filemgr {
 		try {
 			fos = new FileOutputStream(dfufile);
 			fos.write(prefix);
+			fos.flush();
 			fos.write(tprefix);
+			fos.flush();
 			fos.write(image);
+			fos.flush();
 			fos.write(suffix);
+			fos.flush();
 			fos.write(crc_table);
+			fos.flush();
 			fos.close();
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
