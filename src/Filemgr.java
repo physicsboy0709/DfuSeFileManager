@@ -82,7 +82,7 @@ public class Filemgr {
 	private final int targets=0x01;
 	private final byte alternate=0x00;
 	private final byte target_named=0x01;
-	private final String Target_name="ST Hornet Board DFU File ";
+	private final String Target_name="BrainCo Focus1Alpha2 ";
 	private final int[] crc32_table;
 	
 	private byte[] tprefix;
@@ -274,12 +274,12 @@ public class Filemgr {
 
 					case 1:
 						fhex.close();
-						if(verbose) System.out.printf("   Loaded %04x bytes \n", total);
+						System.out.printf("\tLoaded %d bytes \n", total);
 						image[7] = (byte) ((total >> 24) & 0xFF);
 						image[6] = (byte) ((total >> 16) & 0xFF);
 						image[5] = (byte) ((total >> 8) & 0xFF);
 						image[4] = (byte) (total & 0xFF);
-						if(verbose) System.out.printf("image size %02x %02x %02x %02x\n", total & 0xFF, (total >> 8) & 0xFF, (total >> 16) & 0xFF, (total >> 24) & 0xFF);
+						if(verbose) System.out.printf("image size in hex: %02x %02x %02x %02x\n", total & 0xFF, (total >> 8) & 0xFF, (total >> 16) & 0xFF, (total >> 24) & 0xFF);
 						byte[] oldimg = image;
 						image = new byte[total + 8];
 						System.arraycopy(oldimg, 0, image, 0, total + 8);
@@ -323,7 +323,8 @@ public class Filemgr {
 		byte[] crc_table = new byte[4];
 		
 		total = load_file(hexfile);
-
+		if(total == 0)
+			return;
 		create_tprefix(total);
 		create_dfuprefix(total);
 		create_dfusuffix();
@@ -361,7 +362,7 @@ public class Filemgr {
 		{
 			if(verbose) System.out.printf("%02x ", data[i]);
 		}
-		if(verbose) System.out.printf("tutut %d\n", 11 + 274 + total + 8 + 12);
+		System.out.printf("Total Size of dfu is %d\n", 11 + 274 + total + 8 + 12);
 		
 
 		/* compute crc */
@@ -393,7 +394,7 @@ public class Filemgr {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		if(verbose) System.out.printf("\nfile crc %08x  \n", crc32);
+		System.out.printf("\nfile crc %08x  \n", crc32);
 	}
 	/**
 	 * @param args

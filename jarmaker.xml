@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project DfuSeFileMgr">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <!--define folder properties-->
+    <property name="dir.buildfile" value="."/>
+    <property name="dir.workspace" value="/home/physicsboy/javsps"/>
+    <property name="dir.jarfile" value="/home/physicsboy/brainco/softprjs/BrainCo-Focus1-STM32/Utilities/dfutools/dfufilemaker/bin"/>
+    <target name="create_run_jar">
+        <jar destfile="${dir.jarfile}/Filemgr.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="Filemgr"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="${dir.buildfile}/bin"/>
+        </jar>
+    </target>
+</project>
