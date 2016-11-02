@@ -231,7 +231,7 @@ public class Filemgr {
 	}
 	int crc32_byte(int accum, byte delta)
 	{
-		return crc32_table[((byte)(accum ^ delta) & 0xff)] ^ (byte)(accum >> 8);
+		return crc32_table[(accum ^ delta) & 0xff] ^ (accum >>> 8);
 	}
 	int load_file(String filename){
 		int[] memory = new int[65535];
