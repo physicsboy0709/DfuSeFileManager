@@ -128,7 +128,7 @@ public class Filemgr {
 		private final String TARGETPREFIX_szSignature = "Target";
 		private final byte TARGETPREFIX_bAlternateSetting = 0x00, TARGETPREFIX_bTargetNamed = 0x01;
 		private final String TARGETPREFIX_szTargetName;
-		private int TARGETPREFIX_dwNbElements = 1;
+		private int TARGETPREFIX_dwNbElements;
 		private int dwTargetSize = 0;
 		DfuImage(String targetname, String filename){
 			TARGETPREFIX_szTargetName = targetname;
@@ -136,6 +136,7 @@ public class Filemgr {
 			image_element.load_hexfile(filename);
 			dwTargetSize += image_element.getImage_element().length;
 			dfuimages = image_element.getImage_element();
+			TARGETPREFIX_dwNbElements = 1;
 			create_tprefix();
 		}
 		DfuImage(String targetname, String[] filelist, String[] offsetlist){
@@ -154,6 +155,7 @@ public class Filemgr {
 					System.arraycopy(olddfuimage, 0, dfuimages, 0, olddfuimage.length);
 					System.arraycopy(image_element.getImage_element(), 0, dfuimages, olddfuimage.length, image_element.getImage_element().length);
 				}
+				TARGETPREFIX_dwNbElements = filelist.length;
 				create_tprefix();
 			}
 		}
