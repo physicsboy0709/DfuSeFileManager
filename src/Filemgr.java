@@ -392,11 +392,11 @@ public class Filemgr {
 		DfuImage dfuimage;
 		int increamentsize = 4096;
 		if(filelist != null){
-			if(filelist.length == 1){
+			if(offsetlist == null){
 				System.out.printf("Loading the Hex file\n");
 				dfuimage = new DfuImage("BrainCo_Focus1", filelist[0]);
 			} else {
-				if(offsetlist != null && filelist.length == offsetlist.length){
+				if(filelist.length == offsetlist.length){
 					System.out.printf("Loading multiple bin file\n");
 					dfuimage = new DfuImage("BrainCo_Focus1", filelist, offsetlist);
 				} else
@@ -470,14 +470,11 @@ public class Filemgr {
 		crc_result[3] = (byte) ((crc32 >>> 24) & 0xFF);
 		FileOutputStream fos;
 		try {
-			fos = new FileOutputStream(dfufile);
-			fos.write(dfu_prefix);
-			fos.flush();
-			fos.write(dfuimage.getTarget_prefix());
-			fos.flush();
-			fos.write(dfuimage.getDfuimage());
-			fos.flush();
-			fos.write(dfu_suffix);
+			File outfile = new File(dfufile);
+			outfile.getParentFile().mkdir();
+			outfile.createNewFile();
+			fos = new FileOutputStream(outfile);
+			fos.write(data, 0, offset);
 			fos.flush();
 			fos.write(crc_result);
 			fos.flush();
@@ -528,14 +525,18 @@ public class Filemgr {
 						continue;
 					}
 					if(args[i].compareTo("-bin") == 0){
-						int j = ++i;
-						for(;args[i].contains("@") && i<args.length;i++);
-						String[] bin_at_addr;
+						i++;
+						if(filelist != null){
+							System.out.printf("please only specify one input file type. -ihex or -bin");
+							return;
+						}
+						int j = i;
+						for(; i<args.length && args[i].contains("@:"); i++);
 						filelist = new String[i-j];
 						offsets = new String[i-j];
 						int k = 0;
 						for(;j<i;j++){
-							bin_at_addr = args[j].split("@:", 2);
+							String[] bin_at_addr = args[j].split("@:", 2);
 							filelist[k] = bin_at_addr[0];
 							offsets[k] = bin_at_addr[1];
 							k++;
