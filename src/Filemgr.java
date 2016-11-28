@@ -130,13 +130,23 @@ public class Filemgr {
 		private final String TARGETPREFIX_szTargetName;
 		private int TARGETPREFIX_dwNbElements;
 		private int dwTargetSize = 0;
-		DfuImage(String targetname, String filename){
+		DfuImage(String targetname, String[] filelist){
 			TARGETPREFIX_szTargetName = targetname;
 			ImageElement image_element = new ImageElement();
-			image_element.load_hexfile(filename);
+			image_element.load_hexfile(filelist[0]);
 			dwTargetSize += image_element.getImage_element().length;
-			dfuimages = image_element.getImage_element();
-			TARGETPREFIX_dwNbElements = 1;
+			dfuimages = new byte[dwTargetSize];
+			System.arraycopy(image_element.getImage_element(), 0, dfuimages, 0, image_element.getImage_element().length);
+			for(int i = 1; i < filelist.length; i++){
+				image_element.load_hexfile(filelist[i]);
+				byte[] olddfuimage = dfuimages;
+				dwTargetSize += image_element.getImage_element().length;
+				dfuimages = new byte[dwTargetSize];
+				System.arraycopy(olddfuimage, 0, dfuimages, 0, olddfuimage.length);
+				System.arraycopy(image_element.getImage_element(), 0, dfuimages, olddfuimage.length, image_element.getImage_element().length);
+			}
+			TARGETPREFIX_dwNbElements = filelist.length;
+			System.out.printf("Parsed %d file(s)\n", TARGETPREFIX_dwNbElements);
 			create_tprefix();
 		}
 		DfuImage(String targetname, String[] filelist, String[] offsetlist){
@@ -156,6 +166,7 @@ public class Filemgr {
 					System.arraycopy(image_element.getImage_element(), 0, dfuimages, olddfuimage.length, image_element.getImage_element().length);
 				}
 				TARGETPREFIX_dwNbElements = filelist.length;
+				System.out.printf("Parsed %d file(s)\n", TARGETPREFIX_dwNbElements);
 				create_tprefix();
 			}
 		}
@@ -393,11 +404,11 @@ public class Filemgr {
 		int increamentsize = 4096;
 		if(filelist != null){
 			if(offsetlist == null){
-				System.out.printf("Loading the Hex file\n");
-				dfuimage = new DfuImage("BrainCo_Focus1", filelist[0]);
+				System.out.printf("Loading hex file(s)\n");
+				dfuimage = new DfuImage("BrainCo_Focus1", filelist);
 			} else {
 				if(filelist.length == offsetlist.length){
-					System.out.printf("Loading multiple bin file\n");
+					System.out.printf("Loading bin file(s)\n");
 					dfuimage = new DfuImage("BrainCo_Focus1", filelist, offsetlist);
 				} else
 					return;
@@ -495,6 +506,13 @@ public class Filemgr {
 		if (args.length < 2)
 		{
 			System.out.printf("Too few arguments\n");
+			System.out.printf("How to use:\nFilemgr [option]...\n");
+			System.out.printf("  -V\t\t\t\t\tverbose output prefixs and suffixs\n");
+			System.out.printf("  -ihex\t<Intel HEX file(s)>\t\tindicate input file is hex file(s)\n");
+			System.out.printf("  -bin\t<binary file 1>@:<offset1>[,<binary file 2>@:<offset2>,...,<binary file n>@:<offsetn>]\n");
+			System.out.printf("\t\t\t\t\tcomma separated group, <file>@:<addr>\n");
+			System.out.printf("  -O/-o\t<output file>\t\t\tredirect output file, default is current working directory\n");
+			System.out.printf("\n");
 			return;
 		}
 		boolean verbose = false;
@@ -525,36 +543,35 @@ public class Filemgr {
 						continue;
 					}
 					if(args[i].compareTo("-bin") == 0){
-						i++;
 						if(filelist != null){
-							System.out.printf("please only specify one input file type. -ihex or -bin");
+							System.out.printf("please only specify one input file type. -ihex or -bin\n");
 							return;
 						}
-						int j = i;
-						for(; i<args.length && args[i].contains("@:"); i++);
-						filelist = new String[i-j];
-						offsets = new String[i-j];
-						int k = 0;
-						for(;j<i;j++){
-							String[] bin_at_addr = args[j].split("@:", 2);
-							filelist[k] = bin_at_addr[0];
-							offsets[k] = bin_at_addr[1];
-							k++;
+						i++;
+						String[] file_n_off = args[i].split(",", 2);
+						filelist = new String[file_n_off.length];
+						offsets = new String[file_n_off.length];
+						for(int j = 0; j < file_n_off.length; j++){
+							String[] bin_at_addr = file_n_off[j].split("@:", 2);
+							filelist[j] = bin_at_addr[0];
+							offsets[j] = bin_at_addr[1];
 						}
-						i--;
 						continue;
 					}
 					if(args[i].compareTo("-ihex") == 0){
-						i++;
 						if(filelist != null){
-							System.out.printf("please only specify one input file type. -ihex or -bin");
+							System.out.printf("please only specify one input file type. -ihex or -bin\n");
 							return;
 						}
-						filelist = new String[1];
-						filelist[0] = args[i];
+						i++;
+						filelist = args[i].split(",");
 						continue;
 					}
 					if(args[i].compareTo("-o") == 0 || args[i].compareTo("-O") == 0){
+						if(outputfile != null){
+							System.out.printf("please only specify one output file\n");
+							return;
+						}
 						i++;
 						outputfile = args[i];
 						continue;
