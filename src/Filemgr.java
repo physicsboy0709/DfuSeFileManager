@@ -548,7 +548,7 @@ public class Filemgr {
 							return;
 						}
 						i++;
-						String[] file_n_off = args[i].split(",", 2);
+						String[] file_n_off = args[i].split(",");
 						filelist = new String[file_n_off.length];
 						offsets = new String[file_n_off.length];
 						for(int j = 0; j < file_n_off.length; j++){
