@@ -482,7 +482,7 @@ public class Filemgr {
 		FileOutputStream fos;
 		try {
 			File outfile = new File(dfufile);
-			outfile.getParentFile().mkdir();
+			outfile.getParentFile().mkdirs();
 			outfile.createNewFile();
 			fos = new FileOutputStream(outfile);
 			fos.write(data, 0, offset);
