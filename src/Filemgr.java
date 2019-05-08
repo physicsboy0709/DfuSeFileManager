@@ -12,6 +12,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Scanner;
+import org.apache.commons.cli.*;
 
 /**
  * @author physicsboy
@@ -396,7 +397,7 @@ public class Filemgr {
 			return image_element;
 		}
 	}
-	public void createdfu(String[] filelist, String[] offsetlist, String dfufile){
+	public void createdfu(String[] filelist, String[] offsetlist, String dfufile, String ProjectName){
 		// TODO Auto-generated method stub
 		int crc32 = 0xffffffff;
 		int i = 0;
@@ -404,11 +405,11 @@ public class Filemgr {
 		int increamentsize = 4096;
 		if(filelist != null){
 			if(offsetlist == null){
-				System.out.printf("Loading hex file(s)\n");
-				dfuimage = new DfuImage("BrainCo_Focus1", filelist);
+				if(verbose) System.out.printf("Loading hex file(s)\n");
+				dfuimage = new DfuImage(ProjectName, filelist);
 			} else {
 				if(filelist.length == offsetlist.length){
-					System.out.printf("Loading bin file(s)\n");
+					if(verbose) System.out.printf("Loading bin file(s)\n");
 					dfuimage = new DfuImage("BrainCo_Focus1", filelist, offsetlist);
 				} else
 					return;
@@ -468,12 +469,10 @@ public class Filemgr {
 			data[i + offset] = dfu_suffix[i];
 		}
 		offset += i;
-		if(verbose) System.out.printf("\n");
-		System.out.printf("Total Size of dfu is %d, ", offset);
-		/* compute crc */
+		/* compute crc32 */
 		for (i = 0; i < offset; i++)
 			crc32 = crc32_byte(crc32, data[i]);
-		System.out.printf("file CRC32 %08x  \n", crc32);
+		if(verbose) System.out.printf("\nTotal Size of dfu is %d, file CRC32 %08x  \n", offset, crc32);
 		byte[] crc_result = new byte[4];
 		crc_result[0] = (byte) (crc32 & 0xFF);
 		crc_result[1] = (byte) ((crc32 >>> 8) & 0xFF);
@@ -482,6 +481,7 @@ public class Filemgr {
 		FileOutputStream fos;
 		try {
 			File outfile = new File(dfufile);
+			if(verbose) System.out.printf("Writing file...");
 			outfile.getParentFile().mkdirs();
 			outfile.createNewFile();
 			fos = new FileOutputStream(outfile);
@@ -490,6 +490,7 @@ public class Filemgr {
 			fos.write(crc_result);
 			fos.flush();
 			fos.close();
+			if(verbose) System.out.printf("finished\n");
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -502,112 +503,95 @@ public class Filemgr {
 	 * @param args
 	 */
 	public static void main(String[] args){
-		System.out.printf("DfuSe file manager, modified by Tianhe Wang, version 2.0 Beta\n");
-		if (args.length < 2)
-		{
-			System.out.printf("Too few arguments\n");
-			System.out.printf("How to use:\nFilemgr [option]...\n");
-			System.out.printf("  -V\t\t\t\t\tverbose output prefixs and suffixs\n");
-			System.out.printf("  -ihex\t<Intel HEX file(s)>\t\tindicate input file is hex file(s)\n");
-			System.out.printf("  -bin\t<binary file 1>@:<offset1>[,<binary file 2>@:<offset2>,...,<binary file n>@:<offsetn>]\n");
-			System.out.printf("\t\t\t\t\tcomma separated group, <file>@:<addr>\n");
-			System.out.printf("  -O/-o\t<output file>\t\t\tredirect output file, default is current working directory\n");
-			System.out.printf("\n");
-			return;
-		}
+		System.out.printf("DfuSe file manager Java, Tianhe Wang, version 3.0\n");
+		Filemgr flmgr = new Filemgr();
 		boolean verbose = false;
-		Filemgr flmgr = null;
 		String[] filelist = null, offsets = null;
-		String outputfile = null;
-		int vid = 0x0483, pid = 0xdf11;
-		flmgr = new Filemgr();
-		if(args.length > 2){
-			for(int i=0; i<args.length; i++){
-				if(args[i].startsWith("-")){
-					if(args[i].compareTo("-V")==0){
-						verbose = true;
-						continue;
-					}
-					if(args[i].compareTo("-d")==0){
-						i++;
-						String[] vendor_product = args[i].split(":", 2);
-						if(!vendor_product[0].isEmpty()){
-							vid = Integer.parseInt(vendor_product[0], 16);
-							flmgr.setDFUSUFFIX_idVendor(vid);
-						}
-						if(vendor_product.length == 2 && !vendor_product[1].isEmpty()){
-							pid = Integer.parseInt(vendor_product[1], 16);
-							flmgr.setDFUSUFFIX_idProduct(pid);
-						}
-						System.out.printf("vid = %04x, pid = %04x\n", vid, pid);
-						continue;
-					}
-					if(args[i].compareTo("-bin") == 0){
-						if(filelist != null){
-							System.out.printf("please only specify one input file type. -ihex or -bin\n");
-							return;
-						}
-						i++;
-						String[] file_n_off = args[i].split(",");
-						filelist = new String[file_n_off.length];
-						offsets = new String[file_n_off.length];
-						for(int j = 0; j < file_n_off.length; j++){
-							String[] bin_at_addr = file_n_off[j].split("@:", 2);
-							filelist[j] = bin_at_addr[0];
-							offsets[j] = bin_at_addr[1];
-						}
-						continue;
-					}
-					if(args[i].compareTo("-ihex") == 0){
-						if(filelist != null){
-							System.out.printf("please only specify one input file type. -ihex or -bin\n");
-							return;
-						}
-						i++;
-						filelist = args[i].split(",");
-						continue;
-					}
-					if(args[i].compareTo("-o") == 0 || args[i].compareTo("-O") == 0){
-						if(outputfile != null){
-							System.out.printf("please only specify one output file\n");
-							return;
-						}
-						i++;
-						outputfile = args[i];
-						continue;
-					}
+		String outputfile = null, project_name = new String("Focus1Series");
+		
+		Options options = new Options();
+
+		Option option_verbose_option = new Option("V", "verbose", false, "Verbosely output prefixs and suffixs.");
+		option_verbose_option.setRequired(false);
+		options.addOption(option_verbose_option);
+
+		Option option_output = new Option("o", "output", true, "Output file");
+		option_output.setRequired(true);
+		options.addOption(option_output);
+
+		Option option_bin = new Option("bin", "binary", true, "Binary input files. Parameter should follow <binary file 1>@:<offset1>[,<binary file 2>@:<offset2>,...,<binary file n>@:<offsetn>]");
+		option_bin.setRequired(false);
+		options.addOption(option_bin);
+
+		Option option_hex = new Option("ihex", "intel-hex", true, "intel hex input file");
+		option_hex.setRequired(false);
+		options.addOption(option_hex);
+
+		Option option_prjname = new Option("p", "project-name", true, "Project name, as short as possible");
+		option_prjname.setRequired(false);
+		options.addOption(option_prjname);
+
+		Option option_dfu_id = new Option("d", "dfu-id", true, "dfu ids, use column to seperate");
+		option_dfu_id.setRequired(false);
+		options.addOption(option_dfu_id);
+
+		CommandLineParser parser = new DefaultParser();
+		HelpFormatter formatter = new HelpFormatter();
+		CommandLine cmd;
+		try {
+			cmd = parser.parse(options, args);
+			verbose = cmd.hasOption("verbose");
+			outputfile = cmd.getOptionValue("output");
+			if(cmd.hasOption("binary"))
+			{
+				String binary_options = cmd.getOptionValue("binary");
+				String[] file_n_off = binary_options.split(",");
+				filelist = new String[file_n_off.length];
+				offsets = new String[file_n_off.length];
+				for(int j = 0; j < file_n_off.length; j++){
+					String[] bin_at_addr = file_n_off[j].split("@:", 2);
+					filelist[j] = bin_at_addr[0];
+					offsets[j] = bin_at_addr[1];
 				}
 			}
-			if(filelist == null){
-				//indicate the first argument is input file
-				if(args[0].endsWith(".hex") || args[0].endsWith(".hex\"")){
-					filelist = new String[1];
-					filelist[0] = args[0];
-				}else if(args[0].endsWith(".bin") || args[0].endsWith(".bin\"")){
-					filelist = new String[1];
-					filelist[0] = args[0];
-					offsets = new String[1];
-					offsets[0] = "0";//default bin's offset is 0
-				}else{
-					System.out.printf("Please indicate input and output file\n");
-				}
+			else if(cmd.hasOption("intel-hex"))
+			{
+				filelist = new String[1];
+				filelist[0] = cmd.getOptionValue("intel-hex");
 			}
-			if(outputfile == null){
-				if(args[1].endsWith(".dfu") || args[0].endsWith(".dfu\"")){
-					outputfile = args[1];
-				} else {
-					outputfile = "output.dfu";//default file name
-				}
+			else
+			{
+				throw new ParseException("Must have at least binary file or intel-hex file");
 			}
-			flmgr.setVerbose(verbose);
-			flmgr.createdfu(filelist, offsets, outputfile);
-		} else {
-			//default 2 argument is compatible mode, hex file input
-			flmgr.setVerbose(verbose);
-			filelist = new String[1];
-			filelist[0] = args[0];
-			flmgr.createdfu(filelist, offsets, args[1]);
+			//set vendor-id & product-id
+			int vid = 0x0483, pid = 0xdf11;
+			if(cmd.hasOption("dfu-id"))
+			{
+				String[] vendor_product = cmd.getOptionValue("dfu-id").split(":", 2);
+				if(!vendor_product[0].isEmpty()){
+					vid = Integer.parseInt(vendor_product[0], 16);
+					flmgr.setDFUSUFFIX_idVendor(vid);
+				}
+				if(vendor_product.length == 2 && !vendor_product[1].isEmpty()){
+					pid = Integer.parseInt(vendor_product[1], 16);
+					flmgr.setDFUSUFFIX_idProduct(pid);
+				}
+				if(verbose) System.out.printf("vid = %04x, pid = %04x\n", vid, pid);
+			}
+			//project-name field
+			if(cmd.hasOption("project-name"))
+			{
+				project_name = cmd.getOptionValue("project-name");
+			}
+			if(verbose) System.out.printf("project-name is %s\n", project_name);
+		} catch (ParseException e) {
+			System.out.println(e.getMessage());
+			formatter.printHelp("Filemgr", options);
+			System.exit(1);
 		}
+
+		flmgr.setVerbose(verbose);
+		flmgr.createdfu(filelist, offsets, outputfile, project_name);
 		System.out.printf("Successfully ended\n");
 	}
 }

@@ -4,8 +4,8 @@
     <!--ANT 1.7 is required                                        -->
     <!--define folder properties-->
     <property name="dir.buildfile" value="."/>
-    <property name="dir.workspace" value="/home/physicsboy/javsps"/>
-    <property name="dir.jarfile" value="/home/physicsboy/brainco/softprjs/BrainCo-Focus1-STM32/Utilities/dfutools/dfufilemaker/bin"/>
+    <property name="dir.workspace" value="/home/physicsboy/mcuworksps"/>
+    <property name="dir.jarfile" value="/home/physicsboy/brainco/RbtcsHandPalmController/Utilities/dfutools/dfufilemaker/bin"/>
     <target name="create_run_jar">
         <jar destfile="${dir.jarfile}/Filemgr.jar" filesetmanifest="mergewithoutmain">
             <manifest>
@@ -13,6 +13,7 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${dir.buildfile}/bin"/>
+            <zipfileset excludes="META-INF/*.SF" src="${dir.buildfile}/commons-cli-1.4.jar"/>
         </jar>
     </target>
 </project>
